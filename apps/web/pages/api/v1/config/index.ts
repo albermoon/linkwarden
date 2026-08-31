@@ -7,6 +7,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
 export const getEnvData = () => {
   const hasAiProvider = !!(
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
     process.env.NEXT_PUBLIC_OLLAMA_ENDPOINT_URL ||
     process.env.OPENAI_API_KEY ||
     process.env.AZURE_API_KEY ||

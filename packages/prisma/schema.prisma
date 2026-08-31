@@ -51,7 +51,7 @@ model User {
   accessTokens            AccessToken[]
   subscriptions           Subscription?
   linksRouteTo            LinksRouteTo          @default(ORIGINAL)
-  aiTaggingMethod         AiTaggingMethod       @default(DISABLED)
+  aiTaggingMethod         AiTaggingMethod       @default(GENERATE)
   aiPredefinedTags        String[]              @default([])
   aiTagExistingLinks      Boolean               @default(false)
   theme                   Theme                 @default(dark)

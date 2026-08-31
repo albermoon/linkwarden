@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "2.0.56",
     "@ai-sdk/azure": "2.0.88",
+    "@ai-sdk/google": "2.0.56",
     "@ai-sdk/openai-compatible": "1.0.29",
     "@ai-sdk/perplexity": "2.0.22",
     "@linkwarden/filesystem": "*",

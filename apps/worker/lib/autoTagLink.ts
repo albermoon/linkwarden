@@ -5,24 +5,56 @@ import {
   predefinedTagsPrompt,
 } from "./prompts";
 import { prisma } from "@linkwarden/prisma";
-import { generateText } from "ai";
+import { generateObject, generateText } from "ai";
 import { LanguageModelV2 } from "@ai-sdk/provider";
 import {
   createOpenAICompatible,
   OpenAICompatibleProviderSettings,
 } from "@ai-sdk/openai-compatible";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { perplexity } from "@ai-sdk/perplexity";
 import { azure } from "@ai-sdk/azure";
 import { anthropic } from "@ai-sdk/anthropic";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOllama } from "ollama-ai-provider-v2";
 import { titleCase } from "@linkwarden/lib/utils";
+import { createFolder } from "@linkwarden/filesystem";
+import { z } from "zod";
 
-// Function to concat /api with the base URL properly
+const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
+
+const classificationSchema = z.object({
+  collection: z.string().min(1).max(50),
+  tags: z.array(z.string()).min(1).max(5),
+});
+
+type Classification = z.infer<typeof classificationSchema>;
+
+const RESERVED_COLLECTIONS = new Set(["unorganized", "uncategorized"]);
+
 const ensureValidURL = (base: string, path: string) =>
   `${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 
+export const hasAiTaggingProvider = () =>
+  Boolean(
+    process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+      process.env.NEXT_PUBLIC_OLLAMA_ENDPOINT_URL ||
+      process.env.OPENAI_API_KEY ||
+      process.env.AZURE_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENROUTER_API_KEY ||
+      process.env.PERPLEXITY_API_KEY
+  );
+
 const getAIModel = (): LanguageModelV2 => {
+  const geminiKey =
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+  if (geminiKey) {
+    const google = createGoogleGenerativeAI({ apiKey: geminiKey });
+    return google(process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL);
+  }
   if (process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL) {
     let config: OpenAICompatibleProviderSettings = {
       baseURL:
@@ -66,6 +98,120 @@ const getAIModel = (): LanguageModelV2 => {
   throw new Error("No AI provider configured");
 };
 
+const buildPageText = (link: {
+  name?: string | null;
+  url?: string | null;
+  metaDescription?: string | null;
+  textContent?: string | null;
+}) => {
+  const body =
+    link.textContent?.replace(/\s+/g, " ").trim().slice(0, 3500) ||
+    link.metaDescription ||
+    "";
+
+  return [
+    link.name ? `Title: ${link.name}` : "",
+    link.url ? `URL: ${link.url}` : "",
+    body ? `Content: ${body}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+};
+
+const parseClassification = (text: string): Classification => {
+  const raw = text.match(/```json\s*([\s\S]*?)\s*```/i)?.[1] ?? text;
+  const parsed = JSON.parse(raw);
+
+  if (Array.isArray(parsed)) {
+    return classificationSchema.parse({
+      collection: "News",
+      tags: parsed,
+    });
+  }
+
+  return classificationSchema.parse(parsed);
+};
+
+const classifyLink = async (
+  prompt: string
+): Promise<Classification | null> => {
+  const model = getAIModel();
+
+  try {
+    const { object } = await generateObject({
+      model,
+      schema: classificationSchema,
+      prompt,
+    });
+    return object;
+  } catch {
+    const { text } = await generateText({
+      model,
+      prompt,
+    });
+    try {
+      return parseClassification(text);
+    } catch {
+      return null;
+    }
+  }
+};
+
+const assignCollection = async ({
+  user,
+  linkId,
+  currentCollectionId,
+  collectionName,
+  canCreate,
+  existingNames,
+}: {
+  user: User;
+  linkId: number;
+  currentCollectionId: number;
+  collectionName?: string;
+  canCreate: boolean;
+  existingNames: { id: number; name: string }[];
+}) => {
+  const requested = collectionName?.trim().slice(0, 50);
+  if (!requested || RESERVED_COLLECTIONS.has(requested.toLowerCase())) return;
+
+  const match = existingNames.find(
+    (collection) => collection.name.toLowerCase() === requested.toLowerCase()
+  );
+
+  if (match) {
+    if (match.id === currentCollectionId) return;
+    await prisma.link.update({
+      where: { id: linkId },
+      data: { collectionId: match.id },
+    });
+    return;
+  }
+
+  if (!canCreate) return;
+
+  const created = await prisma.collection.create({
+    data: {
+      name: requested,
+      ownerId: user.id,
+      createdById: user.id,
+    },
+  });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { collectionOrder: { push: created.id } },
+  });
+
+  createFolder({ filePath: `archives/${created.id}` });
+  createFolder({ filePath: `archives/preview/${created.id}` });
+
+  await prisma.link.update({
+    where: { id: linkId },
+    data: { collectionId: created.id },
+  });
+};
+
 export default async function autoTagLink(user: User, linkId: number) {
   const link = await prisma.link.findUnique({
     where: { id: linkId },
@@ -73,11 +219,20 @@ export default async function autoTagLink(user: User, linkId: number) {
 
   if (!link) return console.log("Link not found for auto tagging.");
 
-  const description =
-    (link.metaDescription ? link.metaDescription + "..." : undefined) ||
-    (link.textContent ? link.textContent?.slice(0, 500) + "..." : undefined);
+  const description = buildPageText(link);
 
   if (!description) return;
+
+  const existingCollections = await prisma.collection.findMany({
+    where: { ownerId: user.id },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  const collectionNames = existingCollections.map((collection) =>
+    collection.name.length > 50
+      ? collection.name.slice(0, 47) + "..."
+      : collection.name
+  );
 
   let prompt;
 
@@ -108,11 +263,19 @@ export default async function autoTagLink(user: User, linkId: number) {
   }
 
   if (user.aiTaggingMethod === AiTaggingMethod.GENERATE) {
-    prompt = generateTagsPrompt(description);
+    prompt = generateTagsPrompt(description, collectionNames);
   } else if (user.aiTaggingMethod === AiTaggingMethod.EXISTING) {
-    prompt = existingTagsPrompt(description, existingTagsNames);
+    prompt = existingTagsPrompt(
+      description,
+      existingTagsNames,
+      collectionNames
+    );
   } else {
-    prompt = predefinedTagsPrompt(description, user.aiPredefinedTags);
+    prompt = predefinedTagsPrompt(
+      description,
+      user.aiPredefinedTags,
+      collectionNames
+    );
   }
 
   if (
@@ -122,16 +285,15 @@ export default async function autoTagLink(user: User, linkId: number) {
     return console.log("No predefined tags to auto tag for link: ", link.url);
   }
 
-  const { text } = await generateText({
-    model: getAIModel(),
-    prompt: prompt,
-  });
+  const classified = await classifyLink(prompt);
+
+  if (!classified) {
+    console.log("Error auto tagging link: ", link.url);
+    return;
+  }
 
   try {
-    // If text has an array inside a "```json ```" block, extract that
-    let tags: string[] = JSON.parse(
-      text.match(/```json\s*([\s\S]*?)\s*```/i)?.[1] ?? text
-    );
+    let tags = classified.tags;
 
     if (!tags || tags.length === 0) {
       return;
@@ -145,11 +307,17 @@ export default async function autoTagLink(user: User, linkId: number) {
       );
     }
 
-    console.log("Tags for link:", link.url, "=>", tags);
-
     if (tags.length > 5) {
       tags = tags.slice(0, 5);
     }
+
+    console.log(
+      "Classification for link:",
+      link.url,
+      "=>",
+      classified.collection,
+      tags
+    );
 
     await prisma.link.update({
       where: { id: linkId },
@@ -175,6 +343,15 @@ export default async function autoTagLink(user: User, linkId: number) {
         },
         aiTagged: true,
       },
+    });
+
+    await assignCollection({
+      user,
+      linkId,
+      currentCollectionId: link.collectionId,
+      collectionName: classified.collection,
+      canCreate: user.aiTaggingMethod === AiTaggingMethod.GENERATE,
+      existingNames: existingCollections,
     });
   } catch (err) {
     console.log("Error auto tagging link: ", link.url);

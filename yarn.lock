@@ -62,6 +62,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ai-sdk/google@npm:2.0.56":
+  version: 2.0.56
+  resolution: "@ai-sdk/google@npm:2.0.56"
+  dependencies:
+    "@ai-sdk/provider": "npm:2.0.1"
+    "@ai-sdk/provider-utils": "npm:3.0.21"
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: 10c0/3f15cd578d81e31ac9b33c336561c10dd4aa33de0d6ce2a186b22c2298935ef7fab8ad0a7b681ae1b08934a3e924b5543dfa653c88023e37aa0667189a712fe9
+  languageName: node
+  linkType: hard
+
 "@ai-sdk/openai-compatible@npm:1.0.29":
   version: 1.0.29
   resolution: "@ai-sdk/openai-compatible@npm:1.0.29"
@@ -111,12 +123,34 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ai-sdk/provider-utils@npm:3.0.21":
+  version: 3.0.21
+  resolution: "@ai-sdk/provider-utils@npm:3.0.21"
+  dependencies:
+    "@ai-sdk/provider": "npm:2.0.1"
+    "@standard-schema/spec": "npm:^1.0.0"
+    eventsource-parser: "npm:^3.0.6"
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: 10c0/272645109b4990c1367d46fd8982ee3436f88f4f5ec96d78f98c928052dcee6e9a7df326558d908d73901a5c0a84b3374c31722bb78579c2efd3417afb2100fb
+  languageName: node
+  linkType: hard
+
 "@ai-sdk/provider@npm:2.0.0, @ai-sdk/provider@npm:^2.0.0":
   version: 2.0.0
   resolution: "@ai-sdk/provider@npm:2.0.0"
   dependencies:
     json-schema: "npm:^0.4.0"
   checksum: 10c0/e50e520016c9fc0a8b5009cadd47dae2f1c81ec05c1792b9e312d7d15479f024ca8039525813a33425c884e3449019fed21043b1bfabd6a2626152ca9a388199
+  languageName: node
+  linkType: hard
+
+"@ai-sdk/provider@npm:2.0.1":
+  version: 2.0.1
+  resolution: "@ai-sdk/provider@npm:2.0.1"
+  dependencies:
+    json-schema: "npm:^0.4.0"
+  checksum: 10c0/3ec560c5b03401a1e3b8c73875f4258cb815668367157a3caa4d30f580ff5adffbba54ee52f875161c986c5225a88cb3829f050437e0a2d7e5820b72cf08238b
   languageName: node
   linkType: hard
 
@@ -5452,6 +5486,7 @@ __metadata:
   dependencies:
     "@ai-sdk/anthropic": "npm:2.0.56"
     "@ai-sdk/azure": "npm:2.0.88"
+    "@ai-sdk/google": "npm:2.0.56"
     "@ai-sdk/openai-compatible": "npm:1.0.29"
     "@ai-sdk/perplexity": "npm:2.0.22"
     "@linkwarden/filesystem": "npm:*"

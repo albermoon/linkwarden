@@ -1,20 +1,10 @@
 import { delay } from "@linkwarden/lib/utils";
 import { prisma } from "@linkwarden/prisma";
 import { LinkWithCollectionOwnerAndTags } from "@linkwarden/types/global";
-import autoTagLink from "../lib/autoTagLink";
+import autoTagLink, { hasAiTaggingProvider } from "../lib/autoTagLink";
 import getLinkBatchFairly from "../lib/getLinkBatchFairly";
 
 const AUTO_TAG_TAKE_COUNT = Number(process.env.ARCHIVE_TAKE_COUNT || "") || 5;
-
-const hasAiTaggingProvider = () =>
-  Boolean(
-    process.env.NEXT_PUBLIC_OLLAMA_ENDPOINT_URL ||
-      process.env.OPENAI_API_KEY ||
-      process.env.AZURE_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENROUTER_API_KEY ||
-      process.env.PERPLEXITY_API_KEY
-  );
 
 export async function autoTagPreservedLinks(interval = 10) {
   if (!hasAiTaggingProvider()) return;
