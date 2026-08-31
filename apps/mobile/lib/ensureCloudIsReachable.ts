@@ -1,5 +1,7 @@
 import { Alert, Linking } from "react-native";
 
+const PRODUCTION_CLOUD = "https://cloud.linkwarden.app";
+
 const cleanInstance = (instance?: string | null) =>
   (instance || "").trim().replace(/\/+$/, "");
 
@@ -14,7 +16,7 @@ export const isServerReachable = async (
 ) => {
   const nextInstance = cleanInstance(instance);
 
-  if (nextInstance !== "https://cloud.linkwarden.app") return true;
+  if (nextInstance !== PRODUCTION_CLOUD) return true;
 
   try {
     const res = await Promise.race([

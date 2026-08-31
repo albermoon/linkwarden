@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bookmarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E7FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded background -->
+  <rect width="1024" height="1024" rx="230" fill="url(#bgGrad)"/>
+
+  <!-- Bookmark shape -->
+  <path d="M 312 220 L 712 220 C 745 220 772 247 772 280 L 772 820 L 512 680 L 252 820 L 252 280 C 252 247 279 220 312 220 Z"
+        fill="url(#bookmarkGrad)"
+        stroke="#FFFFFF"
+        stroke-width="12"/>
+
+  <!-- Download arrow inside bookmark -->
+  <g transform="translate(512, 420)">
+    <!-- Arrow shaft -->
+    <rect x="-30" y="-80" width="60" height="180" rx="15" fill="#4F46E5"/>
+
+    <!-- Arrow head -->
+    <path d="M -90 60 L 0 150 L 90 60 Z" fill="#4F46E5"/>
+  </g>
+
+  <!-- Accent dots for modern look -->
+  <circle cx="400" cy="350" r="18" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="624" cy="350" r="18" fill="#FFFFFF" opacity="0.3"/>
+</svg>

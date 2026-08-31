@@ -22,7 +22,8 @@ import { ensureCloudIsReachable } from "@/lib/ensureCloudIsReachable";
 import { loadCustomHeaders, setCustomHeaders } from "@/lib/customHeaders";
 import { getSessionName } from "@/lib/sessionName";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
+const LAST_SELF_HOSTED_KEY = "LAST_SELF_HOSTED_INSTANCE";
 const cloudConfig: Config = {
   DISABLE_REGISTRATION: null,
   ADMIN: null,
@@ -74,6 +75,7 @@ type InstanceInfo = {
 type AuthStore = {
   auth: MobileAuth;
   instanceInfo: InstanceInfo;
+  lastSelfHostedInstance: string | null;
   signIn: (
     username: string,
     password: string,
@@ -95,6 +97,15 @@ type AuthStore = {
 
 const cleanInstance = (instance?: string | null) =>
   (instance || cloudInstance).trim().replace(/\/+$/, "");
+
+const persistInstance = async (instance: string) => {
+  const nextInstance = cleanInstance(instance);
+  await SecureStore.setItemAsync("INSTANCE", nextInstance);
+  if (nextInstance !== cloudInstance) {
+    await SecureStore.setItemAsync(LAST_SELF_HOSTED_KEY, nextInstance);
+  }
+  return nextInstance;
+};
 
 const markWhatsNewSeenForNewUser = () => markWhatsNewSeen();
 
@@ -199,11 +210,28 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     status: "idle",
     error: "",
   },
+  lastSelfHostedInstance: null,
   setAuth: async () => {
     await loadCustomHeaders();
     const session = await SecureStore.getItemAsync("TOKEN");
     const instance = await SecureStore.getItemAsync("INSTANCE");
     const nextInstance = cleanInstance(instance);
+    const storedLastSelfHosted = await SecureStore.getItemAsync(
+      LAST_SELF_HOSTED_KEY
+    );
+    const lastSelfHostedInstance =
+      storedLastSelfHosted && storedLastSelfHosted !== cloudInstance
+        ? cleanInstance(storedLastSelfHosted)
+        : nextInstance !== cloudInstance
+          ? nextInstance
+          : null;
+
+    if (lastSelfHostedInstance && !storedLastSelfHosted) {
+      await SecureStore.setItemAsync(
+        LAST_SELF_HOSTED_KEY,
+        lastSelfHostedInstance
+      );
+    }
 
     if (session) {
       set({
@@ -212,6 +240,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
           session,
           status: "authenticated",
         },
+        lastSelfHostedInstance,
       });
     } else {
       set({
@@ -220,6 +249,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
           session: null,
           status: "unauthenticated",
         },
+        lastSelfHostedInstance,
       });
     }
 
@@ -227,17 +257,20 @@ const useAuthStore = create<AuthStore>((set, get) => ({
   },
   requestVerificationEmail,
   setInstance: async (instance, config) => {
-    const nextInstance = cleanInstance(instance);
+    const nextInstance = await persistInstance(instance);
 
     if (nextInstance === cloudInstance)
       await setCustomHeaders(nextInstance, []);
 
-    await SecureStore.setItemAsync("INSTANCE", nextInstance);
     set((state) => ({
       auth: {
         ...state.auth,
         instance: nextInstance,
       },
+      lastSelfHostedInstance:
+        nextInstance !== cloudInstance
+          ? nextInstance
+          : state.lastSelfHostedInstance,
     }));
 
     get().fetchInstanceInfo(nextInstance, config);
@@ -339,7 +372,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     if (process.env.EXPO_PUBLIC_SHOW_LOGS === "true")
       console.log("Signing into", instance);
 
-    if (!(await ensureCloudIsReachable(instance))) return false;
+    if (!(await ensureCloudIsReachable(instance))) {
+      if (process.env.EXPO_PUBLIC_SHOW_LOGS === "true")
+        console.log("Login aborted: server not reachable");
+      return false;
+    }
 
     if (token) {
       try {
@@ -359,15 +396,19 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         if (res.ok) {
           const route = await getPostAuthRoute(instance, token);
 
-          await SecureStore.setItemAsync("INSTANCE", instance);
+          await persistInstance(instance);
           await SecureStore.setItemAsync("TOKEN", token);
-          set({
+          set((state) => ({
             auth: {
               session: token,
               instance,
               status: "authenticated",
             },
-          });
+            lastSelfHostedInstance:
+              instance !== cloudInstance
+                ? cleanInstance(instance)
+                : state.lastSelfHostedInstance,
+          }));
           markWhatsNewSeenForNewUser();
           router.replace(route);
           return true;
@@ -408,13 +449,22 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
         const data = await res.json().catch(() => null);
 
+        if (process.env.EXPO_PUBLIC_SHOW_LOGS === "true")
+          console.log("Login response", res.status, data);
+
         if (res.ok) {
           const session = (data as any).response.token;
           const route = await getPostAuthRoute(instance, session);
 
           await SecureStore.setItemAsync("TOKEN", session);
-          await SecureStore.setItemAsync("INSTANCE", instance);
-          set({ auth: { session, instance, status: "authenticated" } });
+          await persistInstance(instance);
+          set((state) => ({
+            auth: { session, instance, status: "authenticated" },
+            lastSelfHostedInstance:
+              instance !== cloudInstance
+                ? cleanInstance(instance)
+                : state.lastSelfHostedInstance,
+          }));
           markWhatsNewSeenForNewUser();
           router.replace(route);
           return true;
@@ -426,7 +476,12 @@ const useAuthStore = create<AuthStore>((set, get) => ({
           });
           return false;
         } else {
-          Alert.alert("Error", "Invalid credentials");
+          Alert.alert(
+            "Error",
+            typeof data?.response === "string"
+              ? data.response
+              : "Invalid credentials"
+          );
           return false;
         }
       } catch (err: any) {
@@ -495,8 +550,14 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         const route = await getPostAuthRoute(instance, session);
 
         await SecureStore.setItemAsync("TOKEN", session);
-        await SecureStore.setItemAsync("INSTANCE", instance);
-        set({ auth: { session, instance, status: "authenticated" } });
+        await persistInstance(instance);
+        set((state) => ({
+          auth: { session, instance, status: "authenticated" },
+          lastSelfHostedInstance:
+            instance !== cloudInstance
+              ? cleanInstance(instance)
+              : state.lastSelfHostedInstance,
+        }));
         markWhatsNewSeenForNewUser();
         router.replace(route);
       } else {
@@ -565,8 +626,14 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         const route = await getPostAuthRoute(instance, session);
 
         await SecureStore.setItemAsync("TOKEN", session);
-        await SecureStore.setItemAsync("INSTANCE", instance);
-        set({ auth: { session, instance, status: "authenticated" } });
+        await persistInstance(instance);
+        set((state) => ({
+          auth: { session, instance, status: "authenticated" },
+          lastSelfHostedInstance:
+            instance !== cloudInstance
+              ? cleanInstance(instance)
+              : state.lastSelfHostedInstance,
+        }));
         markWhatsNewSeenForNewUser();
         router.replace(route);
       } else {
@@ -587,6 +654,17 @@ const useAuthStore = create<AuthStore>((set, get) => ({
   signOut: async () => {
     const instance = await SecureStore.getItemAsync("INSTANCE");
     const nextInstance = cleanInstance(instance);
+    const lastSelfHostedInstance =
+      nextInstance !== cloudInstance
+        ? nextInstance
+        : get().lastSelfHostedInstance;
+
+    if (lastSelfHostedInstance) {
+      await SecureStore.setItemAsync(
+        LAST_SELF_HOSTED_KEY,
+        lastSelfHostedInstance
+      );
+    }
 
     await SecureStore.deleteItemAsync("TOKEN");
 
@@ -605,6 +683,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         session: null,
         status: "unauthenticated",
       },
+      lastSelfHostedInstance,
     });
 
     get().fetchInstanceInfo(nextInstance);

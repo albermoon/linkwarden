@@ -17,7 +17,7 @@ import {
 import type { Config } from "@linkwarden/router/config";
 import SheetHeader from "./SheetHeader";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
 
 const cleanInstance = (instance: string) => instance.trim().replace(/\/+$/, "");
 
@@ -36,13 +36,17 @@ const timeout = () =>
   );
 
 export default function SelfHostedServerSheet() {
-  const { auth, setInstance } = useAuthStore();
+  const { auth, lastSelfHostedInstance, setInstance } = useAuthStore();
   const { colorScheme } = useColorScheme();
   const insets = useSafeAreaInsets();
   const theme = rawTheme[colorScheme as ThemeName];
-  const [server, setServer] = useState(
-    auth.instance && auth.instance !== cloudInstance ? auth.instance : ""
-  );
+  const savedSelfHosted =
+    auth.instance && auth.instance !== cloudInstance
+      ? auth.instance
+      : lastSelfHostedInstance && lastSelfHostedInstance !== cloudInstance
+        ? lastSelfHostedInstance
+        : "";
+  const [server, setServer] = useState(savedSelfHosted);
   const [showAdvanced, setShowAdvanced] = useState(
     () => (getCustomHeaders()?.headers.length ?? 0) > 0
   );
@@ -53,9 +57,13 @@ export default function SelfHostedServerSheet() {
 
   useEffect(() => {
     setServer(
-      auth.instance && auth.instance !== cloudInstance ? auth.instance : ""
+      auth.instance && auth.instance !== cloudInstance
+        ? auth.instance
+        : lastSelfHostedInstance && lastSelfHostedInstance !== cloudInstance
+          ? lastSelfHostedInstance
+          : ""
     );
-  }, [auth.instance]);
+  }, [auth.instance, lastSelfHostedInstance]);
 
   const closeSheet = () => {
     SheetManager.hide("self-hosted-server-sheet");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   ScrollView,
   Text,
@@ -16,7 +17,7 @@ import { rawTheme, ThemeName } from "@/lib/colors";
 import useAuthStore from "@/store/auth";
 import SheetHeader from "./SheetHeader";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
 
 const cleanInstance = (instance: string) => instance.trim().replace(/\/+$/, "");
 
@@ -71,7 +72,15 @@ export default function LoginSheet() {
   }, [auth.status]);
 
   const handleLogin = async () => {
-    if (!instance || (!form.token && (!form.user || !form.password))) return;
+    if (!instance || (!form.token && (!form.user || !form.password))) {
+      Alert.alert(
+        "Error",
+        method === "token"
+          ? "Please enter an access token."
+          : "Please enter your email/username and password."
+      );
+      return;
+    }
 
     setIsLoading(true);
     const success = await signIn(
@@ -119,6 +128,8 @@ export default function LoginSheet() {
               placeholder="Email or Username"
               value={form.user}
               autoCapitalize="none"
+              autoComplete="username"
+              textContentType="username"
               onChangeText={(text) => setForm({ ...form, user: text })}
             />
             <Input
@@ -126,6 +137,8 @@ export default function LoginSheet() {
               textAlignVertical="center"
               placeholder="Password"
               autoCapitalize="none"
+              autoComplete="password"
+              textContentType="password"
               secureTextEntry
               value={form.password}
               onChangeText={(text) => setForm({ ...form, password: text })}

@@ -13,8 +13,8 @@ const NETWORK_SECURITY_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
             <certificates src="user" />
         </trust-anchors>
     </base-config>
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">cloud.linkwarden.app</domain>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">2.28.68.59</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

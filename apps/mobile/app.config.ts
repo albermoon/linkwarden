@@ -1,7 +1,7 @@
 import { ExpoConfig } from "expo/config";
 
 const config: ExpoConfig = {
-  name: "Linkwarden",
+  name: "SaveIt",
   slug: "linkwarden",
   version: "1.4.2",
   orientation: "portrait",
@@ -24,7 +24,7 @@ const config: ExpoConfig = {
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/images/maskable_logo.png",
-      backgroundColor: "#ffffff",
+      backgroundColor: "#5B4AE8",
     },
     package: "app.linkwarden",
   },

@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import useAuthStore from "@/store/auth";
 import { getSessionName } from "@/lib/sessionName";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
 
 const cleanInstance = (instance: string) => instance.trim().replace(/\/+$/, "");
 

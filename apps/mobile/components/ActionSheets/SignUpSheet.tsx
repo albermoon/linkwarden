@@ -21,7 +21,7 @@ import { rawTheme, ThemeName } from "@/lib/colors";
 import useAuthStore from "@/store/auth";
 import SheetHeader from "./SheetHeader";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
 
 const cloudConfig: Config = {
   DISABLE_REGISTRATION: null,

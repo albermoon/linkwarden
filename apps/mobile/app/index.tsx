@@ -23,7 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardToolbar } from "react-native-keyboard-controller";
 import * as DropdownMenu from "zeego/dropdown-menu";
 
-const cloudInstance = "https://cloud.linkwarden.app";
+const cloudInstance = "http://2.28.68.59:3000";
 let signingOutRecoverySession: string | null = null;
 
 const displayInstance = (instance: string | null | undefined) =>
@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const {
     auth,
     instanceInfo,
+    lastSelfHostedInstance,
     setInstance,
     fetchInstanceInfo,
     signInWithApple,
@@ -75,8 +76,19 @@ export default function HomeScreen() {
     SheetManager.show("sign-up-sheet");
   };
 
+  const lastSelfHosted = lastSelfHostedInstance
+    ? lastSelfHostedInstance.trim().replace(/\/+$/, "")
+    : "";
+  const hasSavedSelfHosted =
+    !!lastSelfHosted && lastSelfHosted !== cloudInstance;
+
   const setCloudServer = () => {
     setInstance(cloudInstance);
+  };
+
+  const reconnectToSavedServer = () => {
+    if (!lastSelfHosted) return;
+    setInstance(lastSelfHosted);
   };
 
   const openSelfHostedSheet = () => {
@@ -92,9 +104,18 @@ export default function HomeScreen() {
       onSelect: setCloudServer,
       className: "font-bold",
     },
+    ...(hasSavedSelfHosted
+      ? [
+          {
+            key: "saved",
+            title: displayInstance(lastSelfHosted),
+            onSelect: reconnectToSavedServer,
+          },
+        ]
+      : []),
     {
       key: "self-hosted",
-      title: "Self-hosted",
+      title: hasSavedSelfHosted ? "Other self-hosted…" : "Self-hosted",
       onSelect: openSelfHostedSheet,
     },
   ];
@@ -116,8 +137,27 @@ export default function HomeScreen() {
       return;
 
     signingOutRecoverySession = auth.session;
+    const savedServer = lastSelfHosted;
     signOut()
       .then(() => {
+        if (savedServer && savedServer !== cloudInstance) {
+          Alert.alert(
+            "Signed out",
+            `Your session is no longer valid. Sign in again to ${displayInstance(savedServer)}?`,
+            [
+              { text: "Not now", style: "cancel" },
+              {
+                text: "Sign in",
+                onPress: () => {
+                  setInstance(savedServer);
+                  SheetManager.show("login-sheet");
+                },
+              },
+            ]
+          );
+          return;
+        }
+
         Alert.alert(
           "Signed out",
           "Your session is no longer valid. Please sign in again."
@@ -127,7 +167,14 @@ export default function HomeScreen() {
         signingOutRecoverySession = null;
         console.error("Could not sign out after losing the server:", error);
       });
-  }, [auth.session, auth.status, serverRecovery, signOut]);
+  }, [
+    auth.session,
+    auth.status,
+    lastSelfHosted,
+    serverRecovery,
+    setInstance,
+    signOut,
+  ]);
 
   if (serverRecovery === "true") {
     return (
@@ -162,12 +209,12 @@ export default function HomeScreen() {
 
             <View className="flex-col gap-4">
               <Image
-                source={require("@/assets/images/linkwarden.png")}
+                source={require("@/assets/images/icon.png")}
                 className="w-[100px] h-[100px] mx-auto"
               />
 
               <Text className="text-base-content text-3xl font-semibold text-center">
-                Bookmarks, Evolved
+                SaveIt
               </Text>
             </View>
 
@@ -284,7 +331,9 @@ export default function HomeScreen() {
                       const isActive =
                         option.key === "cloud"
                           ? isCloudInstance
-                          : !isCloudInstance;
+                          : option.key === "saved"
+                            ? instance === lastSelfHosted
+                            : !isCloudInstance && instance !== lastSelfHosted;
 
                       return (
                         <DropdownMenu.CheckboxItem

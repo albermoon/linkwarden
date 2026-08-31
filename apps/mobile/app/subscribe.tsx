@@ -483,7 +483,7 @@ export default function SubscribeScreen() {
       >
         <View className="items-center px-6 pt-2 pb-1">
           <Image
-            source={require("@/assets/images/linkwarden.png")}
+            source={require("@/assets/images/icon.png")}
             className="w-[60px] h-[60px]"
           />
           <Text className="text-base-content text-3xl font-bold text-center mt-5">
