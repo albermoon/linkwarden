@@ -132,6 +132,9 @@ const parseClassification = (text: string): Classification => {
   return classificationSchema.parse(parsed);
 };
 
+const isRateLimitError = (error: unknown) =>
+  /quota|rate.?limit|429|RESOURCE_EXHAUSTED/i.test(String(error));
+
 const classifyLink = async (
   prompt: string
 ): Promise<Classification | null> => {
@@ -142,12 +145,15 @@ const classifyLink = async (
       model,
       schema: classificationSchema,
       prompt,
+      maxRetries: 1,
     });
     return object;
-  } catch {
+  } catch (error) {
+    if (isRateLimitError(error)) throw error;
     const { text } = await generateText({
       model,
       prompt,
+      maxRetries: 1,
     });
     try {
       return parseClassification(text);
