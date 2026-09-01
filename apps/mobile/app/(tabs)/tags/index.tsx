@@ -1,4 +1,10 @@
-import { View, FlatList, Text, ActivityIndicator } from "react-native";
+import {
+  View,
+  FlatList,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import useAuthStore from "@/store/auth";
 import EmptyState from "@/components/EmptyState";
 import TagListing from "@/components/TagListing";
@@ -77,6 +83,7 @@ export default function TagsScreen() {
       ) : (
         <FlatList
           contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={listStyles.content}
           ListHeaderComponent={() => <></>}
           data={filteredTags}
           refreshControl={refreshControl}
@@ -89,9 +96,6 @@ export default function TagsScreen() {
             tags.fetchNextPage();
           }}
           onEndReachedThreshold={0.5}
-          ItemSeparatorComponent={() => (
-            <View className="bg-neutral-content h-px" />
-          )}
           ListFooterComponent={
             tags.isFetchingNextPage ? (
               <View className="py-4 items-center">
@@ -104,3 +108,12 @@ export default function TagsScreen() {
     </View>
   );
 }
+
+const listStyles = StyleSheet.create({
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 10,
+  },
+});

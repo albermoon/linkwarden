@@ -7,7 +7,8 @@ import * as ContextMenu from "zeego/context-menu";
 import { cn } from "@linkwarden/lib/utils";
 import { rawTheme, ThemeName } from "@/lib/colors";
 import { useColorScheme } from "nativewind";
-import { CalendarDays, Hash, Link } from "lucide-react-native";
+import { CalendarDays, ChevronRight, Hash, Link } from "lucide-react-native";
+import IconBadge from "@/components/ui/IconBadge";
 import { useRemoveTag } from "@linkwarden/router/tags";
 
 type Props = {
@@ -20,15 +21,15 @@ const TagListing = ({ tag }: Props) => {
   const { colorScheme } = useColorScheme();
 
   const deleteCollection = useRemoveTag(auth);
+  const theme = rawTheme[colorScheme as ThemeName];
 
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>
         <Pressable
           className={cn(
-            "p-5 flex-row justify-between",
-            "bg-base-100",
-            Platform.OS !== "android" && "active:bg-base-200/50"
+            "flex-row items-center gap-3.5 overflow-hidden rounded-2xl bg-base-200 p-4",
+            Platform.OS !== "android" && "active:opacity-80"
           )}
           onLongPress={() => {}}
           onPress={() => router.navigate(`/tags/${tag.id}`)}
@@ -37,53 +38,36 @@ const TagListing = ({ tag }: Props) => {
             borderless: false,
           }}
         >
-          <View className="w-full">
-            <View className="w-[90%] flex-col justify-between gap-3">
-              <View className="flex flex-row gap-2 items-center pr-1.5 self-start rounded-md">
-                <Hash
-                  size={16}
-                  color={rawTheme[colorScheme as ThemeName]["primary"]}
-                />
-                <Text
-                  numberOfLines={2}
-                  className="font-medium text-lg text-base-content"
-                >
-                  {decode(tag.name)}
-                </Text>
-              </View>
-            </View>
+          <IconBadge color={theme.primary} size={46} radius={14}>
+            <Hash size={22} color={theme.primary} />
+          </IconBadge>
 
-            <View className="flex-row gap-3">
-              <View className="flex flex-row gap-1 items-center mt-5 self-start">
-                <CalendarDays
-                  size={16}
-                  color={rawTheme[colorScheme as ThemeName]["neutral"]}
-                />
-                <Text
-                  numberOfLines={1}
-                  className="font-light text-xs text-base-content"
-                >
-                  {new Date(tag.createdAt).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </Text>
-              </View>
-              <View className="flex flex-row gap-1 items-center mt-5 self-start">
-                <Link
-                  size={16}
-                  color={rawTheme[colorScheme as ThemeName]["neutral"]}
-                />
-                <Text
-                  numberOfLines={1}
-                  className="font-light text-xs text-base-content"
-                >
-                  {tag._count?.links}
-                </Text>
-              </View>
+          <View className="flex-1">
+            <Text
+              numberOfLines={1}
+              className="text-base font-semibold text-base-content"
+            >
+              {decode(tag.name)}
+            </Text>
+            <View className="mt-1 flex-row items-center gap-1.5">
+              <CalendarDays size={13} color={theme.neutral} />
+              <Text numberOfLines={1} className="text-xs text-neutral">
+                {new Date(tag.createdAt).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </Text>
             </View>
           </View>
+
+          <View className="flex-row items-center gap-1 rounded-full bg-base-100 px-2.5 py-1">
+            <Link size={12} color={theme.neutral} />
+            <Text className="text-xs font-medium text-base-content">
+              {tag._count?.links ?? 0}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={theme.neutral} />
         </Pressable>
       </ContextMenu.Trigger>
 

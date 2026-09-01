@@ -31,3 +31,21 @@ export const rawTheme = {
     error: "#F1293C",
   },
 };
+
+/** Returns an rgba() string for a hex color at the given opacity (0–1). */
+export const withAlpha = (hex: string, alpha: number) => {
+  const clean = hex.replace(/^#/, "");
+  const full =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean;
+  const value = parseInt(full.slice(0, 6), 16);
+  if (Number.isNaN(value)) return hex;
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};

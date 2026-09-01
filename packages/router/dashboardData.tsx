@@ -3,12 +3,13 @@ import {
   LinkIncludingShortenedCollectionAndTags,
   MobileAuth,
 } from "@linkwarden/types/global";
-import { anyPreservationPending } from "@linkwarden/lib/formatStats";
+import { shouldPollLinkProcessing } from "@linkwarden/lib/formatStats";
 import { PRESERVATION_POLL_INTERVAL } from "./links";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 
 const useDashboardData = (auth?: MobileAuth) => {
+  const queryClient = useQueryClient();
   let status: "loading" | "authenticated" | "unauthenticated";
 
   if (!auth) {
@@ -36,7 +37,13 @@ const useDashboardData = (auth?: MobileAuth) => {
       if (!response.ok)
         throw new Error(data?.response || "Failed to fetch dashboard data.");
 
-      return data.data;
+      const result = data.data;
+      if ((result?.numberOfTags ?? 0) > 0 || (result?.links?.length ?? 0) > 0) {
+        queryClient.invalidateQueries({ queryKey: ["tags"] });
+        queryClient.invalidateQueries({ queryKey: ["collections"] });
+      }
+
+      return result;
     },
     enabled: status === "authenticated",
     refetchInterval: (query) => {
@@ -54,7 +61,9 @@ const useDashboardData = (auth?: MobileAuth) => {
         ...(data.links ?? []),
         ...Object.values(data.collectionLinks ?? {}).flat(),
       ];
-      return anyPreservationPending(links) ? PRESERVATION_POLL_INTERVAL : false;
+      return shouldPollLinkProcessing(links)
+        ? PRESERVATION_POLL_INTERVAL
+        : false;
     },
   });
 };

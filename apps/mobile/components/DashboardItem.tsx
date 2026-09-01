@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import IconBadge from "@/components/ui/IconBadge";
 
 export default function DashboardItem({
   name,
@@ -12,24 +13,19 @@ export default function DashboardItem({
   color: string;
 }) {
   return (
-    <View className="flex-1 flex-col gap-2 rounded-xl bg-base-200 p-3">
-      <View className="flex-row justify-between">
-        <View
-          className="flex-col gap-2 rounded-full aspect-square flex justify-center items-center"
-          style={{
-            backgroundColor: color,
-          }}
-        >
-          {icon}
-        </View>
+    <View className="flex-1 flex-col gap-3 rounded-2xl bg-base-200 p-4">
+      <IconBadge color={color} size={40} radius={12}>
+        {icon}
+      </IconBadge>
+      <View>
         <Text
-          className="text-4xl text-base-content mt-0.5 text-right max-w-[75%]"
+          className="text-3xl font-bold tracking-tight text-base-content"
           numberOfLines={1}
         >
           {value || 0}
         </Text>
+        <Text className="mt-0.5 text-sm font-medium text-neutral">{name}</Text>
       </View>
-      <Text className="font-semibold text-neutral">{name}</Text>
     </View>
   );
 }

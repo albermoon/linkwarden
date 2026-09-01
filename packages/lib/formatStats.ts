@@ -43,3 +43,32 @@ export const hasOptimisticLink = (
 export const anyPreservationPending = (
   links: (Partial<Link> | LinkIncludingShortenedCollectionAndTags)[]
 ) => !hasOptimisticLink(links) && links.some(isPreservationPending);
+
+const AI_TAG_POLL_WINDOW_MS = 3 * 60 * 1000;
+
+export const isAiTaggingPending = (
+  link?: Partial<Link> | LinkIncludingShortenedCollectionAndTags | null
+) => {
+  if (
+    !link ||
+    typeof link.id !== "number" ||
+    link.id <= 0 ||
+    !link.url ||
+    !link.lastPreserved ||
+    link.aiTagged !== false
+  ) {
+    return false;
+  }
+
+  const start = new Date(link.lastPreserved).getTime();
+  if (!Number.isFinite(start)) return false;
+  return Date.now() - start < AI_TAG_POLL_WINDOW_MS;
+};
+
+export const anyAiTaggingPending = (
+  links: (Partial<Link> | LinkIncludingShortenedCollectionAndTags)[]
+) => !hasOptimisticLink(links) && links.some(isAiTaggingPending);
+
+export const shouldPollLinkProcessing = (
+  links: (Partial<Link> | LinkIncludingShortenedCollectionAndTags)[]
+) => anyPreservationPending(links) || anyAiTaggingPending(links);

@@ -27,9 +27,9 @@ import { SheetManager } from "react-native-actions-sheet";
 import * as Clipboard from "expo-clipboard";
 import { cn } from "@linkwarden/lib/utils";
 import { useUser } from "@linkwarden/router/user";
-import { rawTheme, ThemeName } from "@/lib/colors";
+import { rawTheme, ThemeName, withAlpha } from "@/lib/colors";
 import { useColorScheme } from "nativewind";
-import { CalendarDays, Folder } from "lucide-react-native";
+import { CalendarDays, Folder, Globe, Pin } from "lucide-react-native";
 import useDataStore from "@/store/data";
 import { useEffect, useState } from "react";
 import { deleteLinkCache, loadCacheOrFetch } from "@/lib/cache";
@@ -50,17 +50,35 @@ const LinkListing = ({ link, dashboard }: Props) => {
   const deleteLink = useDeleteLink({ auth, Alert });
 
   const [url, setUrl] = useState("");
+  const [origin, setOrigin] = useState("");
   const [preview, setPreview] = useState("");
+  const [faviconFailed, setFaviconFailed] = useState(false);
+
+  const theme = rawTheme[colorScheme as ThemeName];
+  const isPinned = !!(link.pinnedBy && link.pinnedBy[0]);
+  const collectionColor = link.collection?.color || "#0ea5e9";
 
   useEffect(() => {
     try {
       if (link.url) {
-        setUrl(new URL(link.url).host.toLowerCase());
+        const parsed = new URL(link.url);
+        setUrl(parsed.host.toLowerCase());
+        setOrigin(parsed.origin);
+      } else {
+        setUrl("");
+        setOrigin("");
       }
     } catch (error) {
-      console.log(error);
+      setUrl("");
+      setOrigin("");
     }
+    setFaviconFailed(false);
   }, [link.url]);
+
+  const faviconUri = origin
+    ? `${auth.instance}/api/v1/getFavicon?url=${encodeURIComponent(origin)}`
+    : "";
+  const showFavicon = !!faviconUri && !faviconFailed;
 
   useEffect(() => {
     loadCacheOrFetch({
@@ -92,10 +110,9 @@ const LinkListing = ({ link, dashboard }: Props) => {
       <ContextMenu.Trigger asChild>
         <Pressable
           className={cn(
-            "p-5 flex-row justify-between",
-            dashboard ? "bg-base-200" : "bg-base-100",
-            Platform.OS !== "android" && "active:bg-base-200/50",
-            dashboard && "rounded-xl"
+            "overflow-hidden rounded-2xl bg-base-200",
+            dashboard ? "w-64" : "w-full flex-row gap-3.5 p-4",
+            Platform.OS !== "android" && "active:opacity-80"
           )}
           onLongPress={() => {}}
           onPress={() => {
@@ -132,83 +149,138 @@ const LinkListing = ({ link, dashboard }: Props) => {
             borderless: false,
           }}
         >
-          <View
-            className={cn(
-              "flex-row justify-between",
-              dashboard ? "w-80" : "w-full"
-            )}
-          >
-            <View className="w-[65%] flex-col justify-between">
-              <Text
-                numberOfLines={2}
-                className="font-medium text-lg text-base-content"
-              >
-                {decode(link.name || link.description || link.url)}
-              </Text>
+          {dashboard ? (
+            <Thumbnail
+              link={link}
+              preview={preview}
+              faviconUri={showFavicon ? faviconUri : ""}
+              onFaviconError={() => setFaviconFailed(true)}
+              tintColor={theme.primary}
+              className="h-32 w-full"
+              imageClassName="h-32 w-full"
+              iconSize={28}
+            />
+          ) : null}
 
-              {url && (
+          <View className={cn("flex-1", dashboard && "p-3.5")}>
+            {url ? (
+              <View className="mb-1.5 flex-row items-center gap-1.5">
+                {showFavicon ? (
+                  <Image
+                    source={{
+                      uri: faviconUri,
+                      headers: customHeadersFor(faviconUri),
+                    }}
+                    onError={() => setFaviconFailed(true)}
+                    alt=""
+                    className="h-4 w-4 rounded"
+                  />
+                ) : (
+                  <Globe size={14} color={theme.neutral} />
+                )}
                 <Text
                   numberOfLines={1}
-                  className="mt-1.5 font-light text-sm text-base-content"
+                  className="flex-1 text-xs font-medium text-neutral"
                 >
                   {url}
                 </Text>
-              )}
-
-              <View className="flex flex-row gap-1 items-center mt-1.5 pr-1.5 self-start rounded-md">
-                <Folder
-                  size={16}
-                  fill={link.collection.color || "#0ea5e9"}
-                  color={link.collection.color || "#0ea5e9"}
-                />
-                <Text
-                  numberOfLines={1}
-                  className="font-light text-xs text-base-content"
-                >
-                  {link.collection.name}
-                </Text>
               </View>
+            ) : null}
+
+            <Text
+              numberOfLines={2}
+              className="text-base font-semibold leading-5 text-base-content"
+              style={dashboard ? { minHeight: 40 } : undefined}
+            >
+              {decode(link.name || link.description || link.url)}
+            </Text>
+            {link.description &&
+            link.description.trim() &&
+            link.description !== link.name ? (
+              <Text
+                numberOfLines={2}
+                className="mt-1 text-xs leading-4 text-neutral"
+              >
+                {decode(link.description)}
+              </Text>
+            ) : null}
+
+            <View className="mt-2.5 flex-row flex-wrap gap-1.5">
+              {link.collection?.name ? (
+                <View
+                  className="max-w-full flex-row items-center gap-1 rounded-full px-2 py-0.5"
+                  style={{ backgroundColor: withAlpha(collectionColor, 0.15) }}
+                >
+                  <Folder
+                    size={11}
+                    fill={collectionColor}
+                    color={collectionColor}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    className="text-xs font-medium text-base-content"
+                  >
+                    {link.collection.name}
+                  </Text>
+                </View>
+              ) : null}
+              {(link.tags || [])
+                .slice(0, dashboard ? 2 : undefined)
+                .map((tag) => (
+                  <View
+                    key={tag.id ?? tag.name}
+                    className="rounded-full bg-base-100 px-2 py-0.5"
+                  >
+                    <Text
+                      numberOfLines={1}
+                      className="text-xs text-base-content"
+                    >
+                      #{tag.name}
+                    </Text>
+                  </View>
+                ))}
+              {dashboard && (link.tags?.length || 0) > 2 ? (
+                <View className="rounded-full bg-base-100 px-2 py-0.5">
+                  <Text className="text-xs text-neutral">
+                    +{(link.tags?.length || 0) - 2}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
-            <View className="flex-col items-end">
-              <View className="rounded-lg overflow-hidden relative">
-                {formatAvailable(link, "preview") ? (
-                  preview ? (
-                    <Image
-                      key={String(link.updatedAt)}
-                      source={{ uri: preview }}
-                      className="rounded-md h-[60px] w-[90px] object-cover scale-105"
-                    />
-                  ) : (
-                    <View className="h-[60px] w-[90px]" />
-                  )
-                ) : !link.preview ? (
-                  <ActivityIndicator
-                    size="small"
-                    className="h-[60px] w-[90px]"
-                  />
-                ) : (
-                  <View className="h-[60px] w-[90px]" />
-                )}
-              </View>
-              <View className="flex flex-row gap-1 items-center mt-5 self-start">
-                <CalendarDays
-                  size={16}
-                  color={rawTheme[colorScheme as ThemeName]["neutral"]}
-                />
-                <Text
-                  numberOfLines={1}
-                  className="font-light text-xs text-base-content"
-                >
-                  {new Date(link.createdAt as string).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </Text>
-              </View>
+            <View className="mt-2.5 flex-row items-center gap-1.5">
+              <CalendarDays size={13} color={theme.neutral} />
+              <Text numberOfLines={1} className="text-xs text-neutral">
+                {new Date(link.createdAt as string).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </Text>
+              {isPinned ? (
+                <>
+                  <View className="mx-0.5 h-1 w-1 rounded-full bg-neutral" />
+                  <Pin size={13} color={theme.primary} fill={theme.primary} />
+                  <Text className="text-xs font-medium text-primary">
+                    Pinned
+                  </Text>
+                </>
+              ) : null}
             </View>
           </View>
+
+          {!dashboard ? (
+            <Thumbnail
+              link={link}
+              preview={preview}
+              faviconUri={showFavicon ? faviconUri : ""}
+              onFaviconError={() => setFaviconFailed(true)}
+              tintColor={theme.primary}
+              className="h-[84px] w-[84px] rounded-xl"
+              imageClassName="h-[84px] w-[84px]"
+              iconSize={22}
+            />
+          ) : null}
         </Pressable>
       </ContextMenu.Trigger>
 
@@ -380,6 +452,66 @@ const LinkListing = ({ link, dashboard }: Props) => {
         </ContextMenu.Item>
       </ContextMenu.Content>
     </ContextMenu.Root>
+  );
+};
+
+type ThumbnailProps = {
+  link: LinkIncludingShortenedCollectionAndTags;
+  preview: string;
+  faviconUri: string;
+  onFaviconError: () => void;
+  tintColor: string;
+  className: string;
+  imageClassName: string;
+  iconSize: number;
+};
+
+/** Preview image with a tinted placeholder (favicon or globe) while none is available. */
+const Thumbnail = ({
+  link,
+  preview,
+  faviconUri,
+  onFaviconError,
+  tintColor,
+  className,
+  imageClassName,
+  iconSize,
+}: ThumbnailProps) => {
+  const hasPreview = formatAvailable(link, "preview");
+  const isPending = !hasPreview && !link.preview;
+
+  if (hasPreview && preview) {
+    return (
+      <View className={cn("overflow-hidden", className)}>
+        <Image
+          key={String(link.updatedAt)}
+          source={{ uri: preview }}
+          alt=""
+          resizeMode="cover"
+          className={cn("scale-105", imageClassName)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className={cn("items-center justify-center overflow-hidden", className)}
+      style={{ backgroundColor: withAlpha(tintColor, 0.1) }}
+    >
+      {isPending ? (
+        <ActivityIndicator size="small" color={tintColor} />
+      ) : faviconUri ? (
+        <Image
+          source={{ uri: faviconUri, headers: customHeadersFor(faviconUri) }}
+          onError={onFaviconError}
+          alt=""
+          style={{ width: iconSize + 4, height: iconSize + 4, borderRadius: 6 }}
+        />
+      ) : (
+        <Globe size={iconSize} color={withAlpha(tintColor, 0.7)} />
+      )}
+    </View>
   );
 };
 

@@ -1,4 +1,10 @@
-import { View, FlatList, Text, ActivityIndicator } from "react-native";
+import {
+  View,
+  FlatList,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import LinkListing from "@/components/LinkListing";
 import EmptyState from "@/components/EmptyState";
 import React, { useState } from "react";
@@ -14,6 +20,7 @@ const RenderItem = React.memo(
     return <LinkListing link={item} />;
   }
 );
+RenderItem.displayName = "LinkRenderItem";
 
 type Props = {
   links: LinkIncludingShortenedCollectionAndTags[];
@@ -48,6 +55,7 @@ export default function Links({ links, data }: Props) {
   ) : (
     <FlatList
       contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={listStyles.content}
       ListHeaderComponent={() => <></>}
       data={links || []}
       refreshControl={refreshControl}
@@ -59,9 +67,6 @@ export default function Links({ links, data }: Props) {
       )}
       onEndReached={() => data.fetchNextPage()}
       onEndReachedThreshold={0.5}
-      ItemSeparatorComponent={() => (
-        <View className="bg-neutral-content h-px" />
-      )}
       ListFooterComponent={
         data.isFetchingNextPage ? (
           <View className="py-4 items-center">
@@ -72,3 +77,12 @@ export default function Links({ links, data }: Props) {
     />
   );
 }
+
+const listStyles = StyleSheet.create({
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 10,
+  },
+});

@@ -26,6 +26,8 @@ const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
 const classificationSchema = z.object({
   collection: z.string().min(1).max(50),
   tags: z.array(z.string()).min(1).max(5),
+  kind: z.enum(["comment", "repository", "article", "other"]).optional(),
+  description: z.string().max(2048).optional(),
 });
 
 type Classification = z.infer<typeof classificationSchema>;
@@ -98,6 +100,88 @@ const getAIModel = (): LanguageModelV2 => {
   throw new Error("No AI provider configured");
 };
 
+const hostnameLabel = (url?: string | null) => {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+
+const CODE_HOSTS = new Set([
+  "github.com",
+  "gitlab.com",
+  "bitbucket.org",
+  "codeberg.org",
+  "sr.ht",
+  "sourceforge.net",
+]);
+
+const isCodeRepositoryUrl = (url?: string | null) => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (!CODE_HOSTS.has(host) || parts.length < 2) return false;
+    if (host === "github.com") {
+      return ![
+        "topics",
+        "settings",
+        "orgs",
+        "marketplace",
+        "features",
+        "pricing",
+        "about",
+        "login",
+        "signup",
+      ].includes(parts[0]);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isSocialCommentUrl = (url?: string | null) => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const path = parsed.pathname;
+    if (
+      host === "x.com" ||
+      host === "twitter.com" ||
+      host === "mobile.twitter.com"
+    ) {
+      return path.includes("/status/");
+    }
+    if (host === "reddit.com" || host.endsWith(".reddit.com")) return true;
+    if (host === "threads.net" || host === "bsky.app") return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const fallbackCollectionForUrl = (url?: string | null) => {
+  const host = hostnameLabel(url);
+  if (isCodeRepositoryUrl(url)) {
+    if (host.includes("gitlab")) return "GitLab";
+    if (host.includes("bitbucket")) return "Bitbucket";
+    if (host.includes("codeberg")) return "Codeberg";
+    return "GitHub";
+  }
+  if (isSocialCommentUrl(url)) {
+    if (host.includes("reddit")) return "Reddit";
+    if (host.includes("bsky")) return "Bluesky";
+    if (host.includes("threads")) return "Threads";
+    return "X";
+  }
+  return "";
+};
+
 const buildPageText = (link: {
   name?: string | null;
   url?: string | null;
@@ -108,10 +192,21 @@ const buildPageText = (link: {
     link.textContent?.replace(/\s+/g, " ").trim().slice(0, 3500) ||
     link.metaDescription ||
     "";
+  const source = hostnameLabel(link.url);
+  const hints = [
+    isCodeRepositoryUrl(link.url)
+      ? "Page type hint: CODE REPOSITORY. Put it in GitHub/GitLab/Repositorios and summarize what the repo does."
+      : "",
+    isSocialCommentUrl(link.url)
+      ? "Page type hint: SOCIAL COMMENT or post (tweet/reply). In description, summarize the MAIN tweet/post and what this comment is about."
+      : "",
+  ].filter(Boolean);
 
   return [
     link.name ? `Title: ${link.name}` : "",
+    source ? `Source: ${source}` : "",
     link.url ? `URL: ${link.url}` : "",
+    ...hints,
     body ? `Content: ${body}` : "",
   ]
     .filter(Boolean)
@@ -126,6 +221,7 @@ const parseClassification = (text: string): Classification => {
     return classificationSchema.parse({
       collection: "News",
       tags: parsed,
+      description: "",
     });
   }
 
@@ -317,12 +413,27 @@ export default async function autoTagLink(user: User, linkId: number) {
       tags = tags.slice(0, 5);
     }
 
+    const collectionName =
+      classified.collection &&
+      !RESERVED_COLLECTIONS.has(classified.collection.toLowerCase())
+        ? classified.collection
+        : fallbackCollectionForUrl(link.url);
+
+    const summary = classified.description?.trim().slice(0, 2048) || "";
+    const shouldWriteDescription =
+      Boolean(summary) &&
+      (!link.description?.trim() ||
+        classified.kind === "comment" ||
+        classified.kind === "repository");
+
     console.log(
       "Classification for link:",
       link.url,
       "=>",
-      classified.collection,
-      tags
+      collectionName,
+      tags,
+      classified.kind || "",
+      summary ? `desc:${summary.slice(0, 80)}` : ""
     );
 
     await prisma.link.update({
@@ -348,6 +459,7 @@ export default async function autoTagLink(user: User, linkId: number) {
           })),
         },
         aiTagged: true,
+        ...(shouldWriteDescription ? { description: summary } : {}),
       },
     });
 
@@ -355,7 +467,7 @@ export default async function autoTagLink(user: User, linkId: number) {
       user,
       linkId,
       currentCollectionId: link.collectionId,
-      collectionName: classified.collection,
+      collectionName,
       canCreate: user.aiTaggingMethod === AiTaggingMethod.GENERATE,
       existingNames: existingCollections,
     });

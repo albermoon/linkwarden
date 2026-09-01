@@ -4,7 +4,7 @@ import {
   LinkIncludingShortenedCollectionAndTags,
   LinkRequestQuery,
 } from "@linkwarden/types/global";
-import { anyPreservationPending } from "@linkwarden/lib/formatStats";
+import { shouldPollLinkProcessing } from "@linkwarden/lib/formatStats";
 import { PRESERVATION_POLL_INTERVAL } from "./links";
 import { useRouter } from "next/router";
 
@@ -70,7 +70,9 @@ const useFetchLinks = (params: string) => {
     refetchInterval: (query) => {
       const links =
         query.state.data?.pages?.flatMap((p) => p?.links ?? []) ?? [];
-      return anyPreservationPending(links) ? PRESERVATION_POLL_INTERVAL : false;
+      return shouldPollLinkProcessing(links)
+        ? PRESERVATION_POLL_INTERVAL
+        : false;
     },
   });
 };

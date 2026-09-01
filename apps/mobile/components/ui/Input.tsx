@@ -8,7 +8,7 @@ const Input = forwardRef<TextInput, TextInputProps>(
       <TextInput
         ref={ref}
         className={cn(
-          "bg-base-200 text-base-content rounded-lg px-4 py-2",
+          "bg-base-200 text-base-content rounded-xl px-4 py-3 text-base",
           className
         )}
         {...props}

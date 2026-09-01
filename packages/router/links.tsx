@@ -21,8 +21,9 @@ import {
 import getFormatFromContentType from "@linkwarden/lib/getFormatFromContentType";
 import getLinkTypeFromFormat from "@linkwarden/lib/getLinkTypeFromFormat";
 import {
-  anyPreservationPending,
+  isAiTaggingPending,
   isPreservationPending,
+  shouldPollLinkProcessing,
 } from "@linkwarden/lib/formatStats";
 import type toaster from "react-hot-toast";
 import { TFunction } from "next-i18next";
@@ -109,7 +110,9 @@ const useFetchLinks = (params: string, auth?: MobileAuth) => {
     refetchInterval: (query) => {
       const links =
         query.state.data?.pages?.flatMap((p) => p?.links ?? []) ?? [];
-      return anyPreservationPending(links) ? PRESERVATION_POLL_INTERVAL : false;
+      return shouldPollLinkProcessing(links)
+        ? PRESERVATION_POLL_INTERVAL
+        : false;
     },
   });
 };
@@ -843,7 +846,8 @@ const useGetLink = ({
       placeholderData: {} as LinkIncludingShortenedCollectionAndTags,
       enabled: id != null && enabled,
       refetchInterval: (query) =>
-        isPreservationPending(query.state.data)
+        isPreservationPending(query.state.data) ||
+        isAiTaggingPending(query.state.data)
           ? PRESERVATION_POLL_INTERVAL
           : false,
       queryFn: async () => {

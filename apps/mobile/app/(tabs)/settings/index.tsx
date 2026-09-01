@@ -20,6 +20,7 @@ import {
   AppWindowMac,
   Check,
   ChevronRight,
+  Copy,
   Download,
   ExternalLink,
   Folder,
@@ -44,6 +45,8 @@ import {
 import useDataStore from "@/store/data";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
+import IconBadge from "@/components/ui/IconBadge";
+import { SettingsGroup, SettingsRow } from "@/components/ui/SettingsRow";
 
 export default function SettingsScreen() {
   const { signOut, auth } = useAuthStore();
@@ -77,6 +80,17 @@ export default function SettingsScreen() {
           ? "Preparing…"
           : `${syncPercent}%`;
 
+  const theme = rawTheme[colorScheme as ThemeName];
+  const displayName = user?.name || user?.username || "";
+  const identity = user?.email || (user?.username ? "@" + user.username : "");
+  const initial = (displayName || identity || "?")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  const CheckMark = ({ active }: { active: boolean }) =>
+    active ? <Check size={20} color={theme.primary} /> : null;
+
   return (
     <View
       style={styles.container}
@@ -86,34 +100,46 @@ export default function SettingsScreen() {
     >
       <ScrollView
         contentContainerStyle={{
-          padding: 20,
+          padding: 16,
+          paddingBottom: 32,
         }}
-        contentContainerClassName="flex-col gap-6"
+        contentContainerClassName="flex-col gap-7"
         contentInsetAdjustmentBehavior="automatic"
       >
-        <View className="bg-base-200 rounded-xl px-4 py-3">
-          <Text className="font-semibold text-xl text-base-content">
-            Your account
-          </Text>
-          <Text className="text-neutral mt-2 mb-3">
-            {user?.email || "@" + user?.username}
-          </Text>
-          <View className="h-px bg-neutral-content -mr-4" />
+        <View className="overflow-hidden rounded-2xl bg-base-200">
+          <View className="flex-row items-center gap-3.5 px-4 pb-4 pt-4">
+            <IconBadge color={theme.primary} size={52} radius={26} tint={0.18}>
+              <Text className="text-xl font-bold text-primary">{initial}</Text>
+            </IconBadge>
+            <View className="flex-1">
+              {displayName ? (
+                <Text
+                  className="text-lg font-semibold text-base-content"
+                  numberOfLines={1}
+                >
+                  {displayName}
+                </Text>
+              ) : null}
+              <Text className="text-sm text-neutral" numberOfLines={1}>
+                {identity}
+              </Text>
+            </View>
+          </View>
+          <View className="h-px bg-neutral-content opacity-60" />
           <TouchableOpacity
-            className="flex-row items-center mt-3 mb-3"
+            className="flex-row items-center px-4 py-3.5"
+            activeOpacity={0.6}
             onPress={() => setShowAccountSettings(true)}
           >
             <Text className="flex-1 text-base text-base-content">
               More Account Settings
             </Text>
-            <ChevronRight
-              size={18}
-              color={rawTheme[colorScheme as ThemeName].neutral}
-            />
+            <ChevronRight size={18} color={theme.neutral} />
           </TouchableOpacity>
-          <View className="h-px bg-neutral-content -mr-4" />
+          <View className="h-px bg-neutral-content opacity-60" />
           <TouchableOpacity
-            className="flex-row items-center mt-3"
+            className="flex-row items-center px-4 py-3.5"
+            activeOpacity={0.6}
             onPress={() =>
               Alert.alert("Sign Out", "Are you sure you want to sign out?", [
                 {
@@ -131,292 +157,173 @@ export default function SettingsScreen() {
             }
           >
             <Text className="flex-1 text-base text-red-500">Sign Out</Text>
-            <LogOut size={18} color="red" />
+            <LogOut size={18} color={theme.error} />
           </TouchableOpacity>
         </View>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Theme</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() => setOverride("system")}
-            >
-              <View className="flex-row items-center gap-2">
-                <Smartphone
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-neutral">System Defaults</Text>
-              </View>
-              {override === "system" ? (
-                <Check
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].primary}
-                />
-              ) : null}
-            </TouchableOpacity>
-            <View className="h-px bg-neutral-content ml-12" />
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() => setOverride("light")}
-            >
-              <View className="flex-row items-center gap-2">
-                <Sun size={20} color="orange" />
-                <Text className="text-orange-500 dark:text-orange-400">
-                  Light
-                </Text>
-              </View>
-              {override === "light" ? (
-                <Check
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].primary}
-                />
-              ) : null}
-            </TouchableOpacity>
-            <View className="h-px bg-neutral-content ml-12" />
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() => setOverride("dark")}
-            >
-              <View className="flex-row items-center gap-2">
-                <Moon size={20} color="royalblue" />
-                <Text className="text-blue-600 dark:text-blue-400">Dark</Text>
-              </View>
-              {override === "dark" ? (
-                <Check
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].primary}
-                />
-              ) : null}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <SettingsGroup title="Theme">
+          <SettingsRow
+            icon={<Smartphone size={18} color={theme.neutral} />}
+            color={theme.neutral}
+            label="System Defaults"
+            right={<CheckMark active={override === "system"} />}
+            onPress={() => setOverride("system")}
+          />
+          <SettingsRow
+            icon={<Sun size={18} color="#F59E0B" />}
+            color="#F59E0B"
+            label="Light"
+            right={<CheckMark active={override === "light"} />}
+            onPress={() => setOverride("light")}
+          />
+          <SettingsRow
+            icon={<Moon size={18} color="#6366F1" />}
+            color="#6366F1"
+            label="Dark"
+            right={<CheckMark active={override === "dark"} />}
+            onPress={() => setOverride("dark")}
+          />
+        </SettingsGroup>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Preferred Browser</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() =>
-                updateData({
-                  preferredBrowser: "app",
-                })
-              }
-            >
-              <View className="flex-row items-center gap-2">
-                <AppWindowMac
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-base-content">In app browser</Text>
-              </View>
-              {data.preferredBrowser === "app" ? (
-                <Check
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].primary}
-                />
-              ) : null}
-            </TouchableOpacity>
-            <View className="h-px bg-neutral-content ml-12" />
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() =>
-                updateData({
-                  preferredBrowser: "system",
-                })
-              }
-            >
-              <View className="flex-row items-center gap-2">
-                <ExternalLink
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-base-content">
-                  System default browser
-                </Text>
-              </View>
-              {data.preferredBrowser === "system" ? (
-                <Check
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].primary}
-                />
-              ) : null}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <SettingsGroup title="Preferred Browser">
+          <SettingsRow
+            icon={<AppWindowMac size={18} color={theme.primary} />}
+            color={theme.primary}
+            label="In app browser"
+            right={<CheckMark active={data.preferredBrowser === "app"} />}
+            onPress={() =>
+              updateData({
+                preferredBrowser: "app",
+              })
+            }
+          />
+          <SettingsRow
+            icon={<ExternalLink size={18} color={theme.primary} />}
+            color={theme.primary}
+            label="System default browser"
+            right={<CheckMark active={data.preferredBrowser === "system"} />}
+            onPress={() =>
+              updateData({
+                preferredBrowser: "system",
+              })
+            }
+          />
+        </SettingsGroup>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Save Shared Links To</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() => router.navigate("/settings/preferredCollection")}
-            >
-              <View className="flex-row items-center gap-2">
-                <Folder
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-base-content">Preferred collection</Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <Text numberOfLines={1} className="text-neutral max-w-[140px]">
+        <SettingsGroup title="Save Shared Links To">
+          <SettingsRow
+            icon={<Folder size={18} color={theme.primary} />}
+            color={theme.primary}
+            label="Preferred collection"
+            right={
+              <View className="flex-row items-center gap-1.5">
+                <Text numberOfLines={1} className="max-w-[140px] text-neutral">
                   {data.preferredCollection?.name || "None"}
                 </Text>
-                <ChevronRight
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
+                <ChevronRight size={18} color={theme.neutral} />
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+            }
+            onPress={() => router.navigate("/settings/preferredCollection")}
+          />
+        </SettingsGroup>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Offline Storage</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <View className="py-3 px-4">
-              <View className="flex-row gap-2 items-center justify-between">
+        <SettingsGroup title="Offline Storage">
+          <SettingsRow
+            icon={<Download size={18} color="#10B981" />}
+            color="#10B981"
+            label="Save for offline access"
+            description="Automatically saves preserved formats for links loaded in the app to this device for offline access. When this is off, only formats you open are saved."
+            right={
+              <Switch
+                value={!!data.offlineEnabled}
+                onValueChange={(value) => updateData({ offlineEnabled: value })}
+                trackColor={{
+                  true: theme.primary,
+                }}
+                thumbColor={theme["base-100"]}
+              />
+            }
+          />
+          {data.offlineEnabled ? (
+            <SettingsRow
+              icon={<RefreshCw size={18} color="#0EA5E9" />}
+              color="#0EA5E9"
+              label="Offline sync"
+              right={
                 <View className="flex-row items-center gap-2">
-                  <Download
-                    size={20}
-                    color={rawTheme[colorScheme as ThemeName].neutral}
-                  />
-                  <Text className="text-base-content">
-                    Save for offline access
-                  </Text>
+                  {syncStatus === "syncing" ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  ) : null}
+                  <Text className="text-neutral">{syncStatusLabel}</Text>
                 </View>
-                <Switch
-                  value={!!data.offlineEnabled}
-                  onValueChange={(value) =>
-                    updateData({ offlineEnabled: value })
-                  }
-                  trackColor={{
-                    true: rawTheme[colorScheme as ThemeName].primary,
-                  }}
-                  thumbColor={rawTheme[colorScheme as ThemeName]["base-100"]}
-                />
-              </View>
-              <Text className="text-sm text-neutral mt-2 ml-7">
-                Automatically saves preserved formats for links loaded in the
-                app to this device for offline access. When this is off, only
-                formats you open are saved.
-              </Text>
-            </View>
-            {data.offlineEnabled ? (
-              <>
-                <View className="h-px bg-neutral-content ml-12" />
-                <View className="flex-row gap-2 items-center justify-between py-3 px-4">
-                  <View className="flex-row items-center gap-2">
-                    <RefreshCw
-                      size={20}
-                      color={rawTheme[colorScheme as ThemeName].neutral}
-                    />
-                    <Text className="text-base-content">Offline sync</Text>
-                  </View>
-                  <View className="flex-row items-center gap-2">
-                    {syncStatus === "syncing" ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={rawTheme[colorScheme as ThemeName].primary}
-                      />
-                    ) : null}
-                    <Text className="text-neutral">{syncStatusLabel}</Text>
-                  </View>
-                </View>
-              </>
-            ) : null}
-            <View className="h-px bg-neutral-content ml-12" />
-            <View className="flex-row gap-2 items-center justify-between py-3 px-4">
-              <View className="flex-row items-center gap-2">
-                <HardDrive
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-base-content">Storage used</Text>
-              </View>
-              <Text className="text-neutral">{formatBytes(bytesUsed)}</Text>
-            </View>
-            <View className="h-px bg-neutral-content ml-12" />
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              disabled={syncStatus === "syncing"}
-              onPress={() =>
-                Alert.alert(
-                  "Clear cache",
-                  "This will delete all downloaded formats and previews from this device.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Clear",
-                      style: "destructive",
-                      onPress: async () => {
-                        await clearCache();
-                        useOfflineSyncStore.getState().reset();
-                        await recomputeStorage();
-                      },
-                    },
-                  ]
-                )
               }
-            >
-              <View className="flex-row items-center gap-2">
-                <Trash2
-                  size={20}
-                  color={syncStatus === "syncing" ? "gray" : "red"}
-                />
-                <Text
-                  className={
-                    syncStatus === "syncing" ? "text-neutral" : "text-red-500"
-                  }
-                >
-                  Clear cache
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+            />
+          ) : null}
+          <SettingsRow
+            icon={<HardDrive size={18} color={theme.neutral} />}
+            color={theme.neutral}
+            label="Storage used"
+            right={
+              <Text className="text-neutral">{formatBytes(bytesUsed)}</Text>
+            }
+          />
+          <SettingsRow
+            icon={
+              <Trash2
+                size={18}
+                color={syncStatus === "syncing" ? theme.neutral : theme.error}
+              />
+            }
+            color={theme.error}
+            label="Clear cache"
+            labelClassName="text-red-500"
+            disabled={syncStatus === "syncing"}
+            onPress={() =>
+              Alert.alert(
+                "Clear cache",
+                "This will delete all downloaded formats and previews from this device.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Clear",
+                    style: "destructive",
+                    onPress: async () => {
+                      await clearCache();
+                      useOfflineSyncStore.getState().reset();
+                      await recomputeStorage();
+                    },
+                  },
+                ]
+              )
+            }
+          />
+        </SettingsGroup>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Contact Us</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={async () => {
-                await Clipboard.setStringAsync("support@linkwarden.app");
-                Alert.alert("Copied to clipboard", "support@linkwarden.app");
-              }}
-            >
-              <View className="flex-row items-center gap-2">
-                <Mail
-                  size={20}
-                  color={rawTheme[colorScheme as ThemeName].neutral}
-                />
-                <Text className="text-base-content">
-                  support@linkwarden.app
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <SettingsGroup title="Contact Us">
+          <SettingsRow
+            icon={<Mail size={18} color={theme.primary} />}
+            color={theme.primary}
+            label="support@linkwarden.app"
+            right={<Copy size={16} color={theme.neutral} />}
+            onPress={async () => {
+              await Clipboard.setStringAsync("support@linkwarden.app");
+              Alert.alert("Copied to clipboard", "support@linkwarden.app");
+            }}
+          />
+        </SettingsGroup>
 
-        <View>
-          <Text className="mb-4 mx-4 text-neutral">Account Deletion</Text>
-          <View className="bg-base-200 rounded-xl flex-col">
-            <TouchableOpacity
-              className="flex-row gap-2 items-center justify-between py-3 px-4"
-              onPress={() => SheetManager.show("delete-account-sheet")}
-            >
-              <View className="flex-row items-center gap-2">
-                <UserX size={20} color="red" />
-                <Text className="text-red-500">Delete Account</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <SettingsGroup title="Account Deletion">
+          <SettingsRow
+            icon={<UserX size={18} color={theme.error} />}
+            color={theme.error}
+            label="Delete Account"
+            labelClassName="text-red-500"
+            right={<ChevronRight size={18} color={theme.neutral} />}
+            onPress={() => SheetManager.show("delete-account-sheet")}
+          />
+        </SettingsGroup>
 
-        <Text className="mx-auto text-sm text-neutral">
+        <Text className="mx-auto text-xs text-neutral">
           Linkwarden for {Platform.OS === "ios" ? "iOS" : "Android"}{" "}
           {nativeApplicationVersion}
         </Text>

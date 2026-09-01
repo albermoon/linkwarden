@@ -8,11 +8,19 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SearchX } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { rawTheme, ThemeName } from "@/lib/colors";
+import IconBadge from "@/components/ui/IconBadge";
 
 type Props = {
   /** Whether to render the message. Hidden e.g. while still fetching. */
   showMessage?: boolean;
   message?: string;
+  /** Optional secondary line under the message. */
+  hint?: string;
+  /** Icon rendered inside the tinted badge. Defaults to a search icon. */
+  icon?: React.ReactNode;
   refreshControl?: ScrollViewProps["refreshControl"];
 };
 
@@ -28,10 +36,14 @@ type Props = {
  */
 export default function EmptyState({
   showMessage = true,
-  message = "Nothing found...",
+  message = "Nothing found",
+  hint,
+  icon,
   refreshControl,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
+  const theme = rawTheme[colorScheme as ThemeName];
 
   return (
     <View style={{ flex: 1 }}>
@@ -54,7 +66,19 @@ export default function EmptyState({
             },
           ]}
         >
-          <Text className="text-center text-xl text-neutral">{message}</Text>
+          <View className="items-center gap-3 px-10">
+            <IconBadge color={theme.primary} size={64} radius={32} tint={0.12}>
+              {icon ?? <SearchX size={28} color={theme.primary} />}
+            </IconBadge>
+            <Text className="text-center text-lg font-semibold text-base-content">
+              {message}
+            </Text>
+            {hint ? (
+              <Text className="text-center text-sm leading-5 text-neutral">
+                {hint}
+              </Text>
+            ) : null}
+          </View>
         </View>
       )}
     </View>

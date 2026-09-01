@@ -10,7 +10,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@linkwarden/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-lg disabled:opacity-50 disabled:pointer-events-none",
+  "inline-flex items-center justify-center gap-2 rounded-xl disabled:opacity-50 disabled:pointer-events-none",
   {
     variants: {
       variant: {
@@ -21,7 +21,7 @@ const buttonVariants = cva(
         outline: "border border-base-content",
         secondary: "bg-secondary text-secondary-foreground",
         input:
-          "bg-base-100 rounded-lg px-4 justify-between flex-row font-normal",
+          "bg-base-100 rounded-xl px-4 justify-between flex-row font-normal",
         metal: "bg-neutral-content text-base-content border border-neutral/30",
         ghost: "",
         simple: "bg-base-200",

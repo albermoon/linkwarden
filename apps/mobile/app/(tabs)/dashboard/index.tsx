@@ -166,7 +166,8 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "column",
-    gap: 15,
-    paddingVertical: 20,
+    gap: 28,
+    paddingTop: 12,
+    paddingBottom: 32,
   },
 });
